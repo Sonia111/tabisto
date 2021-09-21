@@ -1,0 +1,67 @@
+version: '3'
+services:
+    apache:
+        build: .docker/apache
+        container_name: myshop_apache
+        ports:
+          - 15000:80
+        volumes:
+          - .docker/config/vhosts:/etc/apache2/sites-enabled
+          - ./tabesto/TabestoExam:/home/wwwroot/sf4
+        depends_on:
+          - php
+
+    php:
+        build: .docker/php
+        container_name: myshop_php
+        volumes:
+          - ./tabesto/TabestoExam:/home/wwwroot/sf4
+        environment:
+          - maildev_host=myshop_maildev
+        depends_on:
+          - maildev
+          - postgres
+
+    postgres:
+        container_name: myshop_postgres
+        build: .docker/postgres
+        image: luizmoratelli/postgres
+        environment:
+          - POSTGRES_DB=app
+          - POSTGRES_USER=postgres
+          - POSTGRES_PASSWORD=postgres
+          - TZ=GMT
+        ports:
+          - 5436:5432
+        volumes:
+          - .:/var/lib/postgresql/data
+
+    pgadmin:
+      container_name: pgadmin_postgres
+      image: dpage/pgadmin4:4.30
+      environment:
+          PGADMIN_DEFAULT_EMAIL: myshop@pgadmin.com
+          PGADMIN_DEFAULT_PASSWORD: cm004ts
+          PGADMIN_LISTEN_PORT: 80
+      ports:
+          - 15001:80
+      volumes:
+          - .docker/pgadmin:/var/lib/pgadmin
+      depends_on:
+          - postgres
+
+    maildev:
+        image: djfarrelly/maildev
+        container_name: myshop_maildev
+        ports:
+          - 8001:80
+
+    front-service: # The name of the service
+      container_name: myshop_frontend  # Container name
+      build: ./.docker/angular # Location of our Dockerfile
+      volumes: # Volume binding
+        - './myshop_frontend:/usr/src/app' 
+      ports: 
+        - '4200:4200' # Port mapping
+      command: > 
+        bash -c "npm install && ng serve --host 0.0.0.0 --port 4200"
